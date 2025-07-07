@@ -53,7 +53,8 @@ def dispatch(folder: str, maxjobs: int, username: str, wait_time: int = 1):
         if to_dispatch > 0:
             for i in range(to_dispatch):
                 job = jobs.pop()
-                dispatch_job(job)
+                job_path = os.path.join(folder, job)
+                dispatch_job(job_path)
 
             dispatched_jobs += to_dispatch
             print(f"Dispatched {dispatched_jobs} out of {total_jobs}.")
@@ -63,8 +64,8 @@ def dispatch(folder: str, maxjobs: int, username: str, wait_time: int = 1):
     print("Finished!")
 
 
-def dispatch_job(job):
-    subprocess.run(["sbatch", os.path.abspath(job)])
+def dispatch_job(job_path):
+    subprocess.run(["sbatch", os.path.abspath(job_path)])
 
 
 if __name__ == "__main__":

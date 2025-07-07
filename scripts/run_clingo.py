@@ -192,3 +192,4 @@ def process_all_files():
 # Start processing all files
 if __name__ == "__main__":
     process_all_files()
+    logging.info(f"Finished processing. Results written to {EXCEL_FILE}")
