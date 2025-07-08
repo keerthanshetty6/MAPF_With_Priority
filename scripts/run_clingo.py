@@ -7,7 +7,7 @@ import os
 import re
 import pandas as pd
 import openpyxl 
-import locale
+#import locale
 import numpy as np
 import argparse
 
@@ -37,7 +37,7 @@ if Heuristics != "No" and not args.priority_file:
     raise ValueError("A priority file must be provided when using heuristics A or B.")
 
 # Set locale to use comma as a decimal separator
-locale.setlocale(locale.LC_NUMERIC, "de_DE")
+#locale.setlocale(locale.LC_NUMERIC, "de_DE")
 
 os.makedirs("logs", exist_ok=True)
 os.makedirs("results", exist_ok=True)
