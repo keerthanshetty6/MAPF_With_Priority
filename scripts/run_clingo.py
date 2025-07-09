@@ -130,10 +130,11 @@ def run_solver(file_path,delta, *args, **kwargs):
 
     if Heuristics != "No":
         command.append("--heuristic=domain")
+        command.append("--opt-strategy=bb")
 
     command.append("--stats")
 
-    #logging.info("Running command: " + " ".join(command))
+    logging.info("Running command: " + " ".join(command))
 
     start_time = timeit.default_timer()
     try:

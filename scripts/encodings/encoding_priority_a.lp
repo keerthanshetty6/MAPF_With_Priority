@@ -64,6 +64,7 @@ bound(H+D) :- H = #sum{T,A : sp_length(A,T)}, delta(D).
 
 
 #heuristic move(A,_,V,T) : priority(A,P) . [P,level]
+%#heuristic move(A,U,V,T) : edge(U,V), time(T), priority(A,P) . [P,level]
 
 
 %:- move(A, _, U, T), at(B, U, T-1), priority(A, PA), priority(B, PB), PA > PB, not move(B, U, _, T).
