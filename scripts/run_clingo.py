@@ -44,8 +44,12 @@ os.makedirs("results", exist_ok=True)
 
 folder_name = os.path.basename(os.path.normpath(FOLDER_PATH))
 
-EXCEL_FILE = os.path.join("results", f"{folder_name}.xlsx")
-log_filename = os.path.join("logs", f"{folder_name}.log")
+priority_suffix = ""
+if PRIORITY_FILE:
+    priority_suffix = "_" + os.path.basename(PRIORITY_FILE).replace(".lp", "")
+
+EXCEL_FILE = os.path.join("results",f"{folder_name}_{Heuristics}{priority_suffix}.xlsx")
+log_filename = os.path.join("logs", f"{folder_name}_{Heuristics}{priority_suffix}.log")
 
 # Configure logging
 logging.basicConfig(
@@ -98,14 +102,14 @@ def log_cumulative_time(func):
                 ] 
 
             if result == "timeout":
-                logging.info(f"file : {os.path.basename(file_path)},Heuristic : {Heuristics}, delta : {delta}, time : {cumulative_time:.2f} (timeout)")
+                logging.info(f" delta : {delta}, time : {cumulative_time:.2f} (timeout)")
                 return True    # Stop processing further files
             elif result == "solution_found":
-                logging.info(f"file : {os.path.basename(file_path)},Heuristic : {Heuristics}, delta : {delta}, time : {cumulative_time:.2f} (solution found)")
+                logging.info(f"delta : {delta}, time : {cumulative_time:.2f} (solution found)")
                 return False    # Continue processing next file
 
-            delta += 1  # Increment delta for the next iteration
             logging.info(f" delta : {delta}, time_spent : {time_spent:.2f}")
+            delta += 1  # Increment delta for the next iteration
     return wrapper
 
 # Main function to run the solver
@@ -129,7 +133,7 @@ def run_solver(file_path,delta, *args, **kwargs):
 
     command.append("--stats")
 
-    logging.info("Running command: " + " ".join(command))
+    #logging.info("Running command: " + " ".join(command))
 
     start_time = timeit.default_timer()
     try:
