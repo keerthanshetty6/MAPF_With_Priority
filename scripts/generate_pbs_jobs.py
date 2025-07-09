@@ -5,12 +5,12 @@ PBS_TEMPLATE = """#!/bin/bash
 #SBATCH --error=logs/err_%j.err
 #SBATCH --time=02:00:00
 #SBATCH --cpus-per-task=5
-#SBATCH --partition=kr
+#SBATCH --partition=long
 
 set -e
 
-source ~/.bashrc
 module load miniconda
+source /mnt/beegfs/apps/miniconda/etc/profile.d/conda.sh
 conda activate cmapf-env
 
 echo "Running job {job_id} on $(hostname)"
