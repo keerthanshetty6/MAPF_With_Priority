@@ -7,7 +7,6 @@ import os
 import re
 import pandas as pd
 import openpyxl 
-#import locale
 import numpy as np
 import argparse
 
@@ -17,6 +16,7 @@ parser.add_argument("--priority_file", required=False, help="Path to priority.lp
 parser.add_argument("--heuristic", required=True, choices=["No", "A", "B"], help="Heuristic strategy")
 
 args = parser.parse_args()
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENCODING_DIR = os.path.join(PROJECT_ROOT, "scripts", "encodings")
 FOLDER_PATH = os.path.join(PROJECT_ROOT, args.instance_folder)
@@ -24,12 +24,13 @@ PRIORITY_FILE = os.path.join(PROJECT_ROOT, args.priority_file) if args.priority_
 MAPF_Solver = os.path.join(PROJECT_ROOT, "scripts", "MAPF_with_priority.py")
 Heuristics = args.heuristic
 
+encoding_base = os.path.join(ENCODING_DIR, "encoding_base.lp")
 if Heuristics == "No":
-    encoding_lp = os.path.join(ENCODING_DIR, "encoding_base.lp")
+    heuristic_lp = None
 elif Heuristics == "A":
-    encoding_lp = os.path.join(ENCODING_DIR, "encoding_priority_a.lp")
+    heuristic_lp = os.path.join(ENCODING_DIR, "heuristics_a.lp")
 elif Heuristics == "B":
-    encoding_lp = os.path.join(ENCODING_DIR, "encoding_priority_b.lp")
+    heuristic_lp = os.path.join(ENCODING_DIR, "heuristics_b.lp")
 else:
     raise ValueError("Unsupported heuristic type")
 
@@ -83,7 +84,7 @@ def log_cumulative_time(func):
         logging.info(f"file : {os.path.basename(file_path)},Heuristic : {Heuristics}")
         while True:
             #start = timeit.default_timer()
-            result, time_spent,stats  = func(file_path,delta, *args, **kwargs)  # Call the decorated function
+            result, time_spent,stats  = func(file_path,delta, cumulative_time,*args, **kwargs)  # Call the decorated function
             #end = timeit.default_timer()
             #iteration_time = end - start
             cumulative_time += time_spent
@@ -114,14 +115,17 @@ def log_cumulative_time(func):
 
 # Main function to run the solver
 @log_cumulative_time
-def run_solver(file_path,delta, *args, **kwargs):
+def run_solver(file_path,delta, cumulative_time,*args, **kwargs):
     python_executable = sys.executable  # Detect current Python executable
     command = [
         python_executable,
         MAPF_Solver,
         f"--delta={delta}",
-        encoding_lp,  
+        f"--heuristic-strategy={Heuristics}",
+        encoding_base,  
     ]
+    if heuristic_lp:
+        command.append(heuristic_lp)
 
     if Heuristics != "No":
         command.append(PRIORITY_FILE)
@@ -130,7 +134,7 @@ def run_solver(file_path,delta, *args, **kwargs):
 
     if Heuristics != "No":
         command.append("--heuristic=domain")
-        command.append("--opt-strategy=bb")
+        command.append("--opt-strategy=bb") #usc
 
     command.append("--stats")
 
@@ -138,7 +142,8 @@ def run_solver(file_path,delta, *args, **kwargs):
 
     start_time = timeit.default_timer()
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=TIMEOUT)
+        remaining_time = max(0.1, TIMEOUT - cumulative_time)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=remaining_time)
     except subprocess.TimeoutExpired:
         elapsed_time = timeit.default_timer() - start_time  # Time spent before timeout
         logging.info(f"Timeout occurred after {elapsed_time:.2f} seconds")

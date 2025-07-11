@@ -21,6 +21,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
 
     def __init__(self):
         self._delta_or_horizon : Optional[int]      = None # optional delta/horizon value
+        self._heuristic_strategy: str               = "No" # heuristic strategy, can be "No", "A", or "B"
         self._reach :Flag                           = Flag(True) # whether to compute reach atoms via cmapf or ASP
         self._costs :Flag                           = Flag(True) # whether to add per agent costs to models
         self._stats : dict                          = {"Time": {}} # a dictionary to gather statistics
@@ -54,6 +55,13 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         except ValueError:
             print(f"Invalid value for delta or horizon: {value}")
             return False
+        
+    def _parse_heuristic(self, value: str) -> bool:
+        if value not in ["No", "A", "B"]:
+            print(f"Invalid heuristic strategy: {value}. Must be one of No, A, B.")
+            return False
+        self._heuristic_strategy = value
+        return True
 
     #callback function to update statistics. The step and accumulated statistics are passed as arguments.
     def _on_statistics(self, step: dict, accu: dict) -> None:
@@ -87,6 +95,12 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         options.add_flag(
             "PriorityMAPF", "show-costs", "add per agents costs to model", self._costs
         )
+        options.add(
+            "PriorityMAPF",
+            "heuristic-strategy",
+            "select heuristic strategy (No, A, B)",
+            lambda value: self._parse_heuristic(value),
+        )
 
 
     def validate_options(self) -> bool:
@@ -96,6 +110,11 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         if self._objectives > 1:
             print("Error: either a delta value or a horizon should be passed, not both.")
             return False
+        
+        if self._heuristic_strategy not in ["No", "A", "B"]:
+            print(f"Error: Invalid heuristic strategy: {self._heuristic_strategy}. Must be one of No, A, B.")
+            return False
+        
         return True
 
     def _on_model(self, model: Model) -> None:
@@ -184,6 +203,10 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         else:
             parts+=([("sum_of_costs", [Number(delta_or_horizon)]), ("sum_of_costs", [])]) #program sum_of_costs(delta).
             self._stats["Delta"] = delta_or_horizon
+
+        # select heuristic strategy
+        if self._heuristic_strategy in ("A", "B"):
+            parts.append(("heuristics", []))  # so the #program heuristics. section is grounded
 
         # always add shortest paths
         if not self._reach or self._objective == Objective.MAKESPAN:

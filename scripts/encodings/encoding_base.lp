@@ -63,17 +63,7 @@ bound(H+D) :- H = #sum{T,A : sp_length(A,T)}, delta(D).
 #minimize { 1,T: penalty(_,T) }.
 
 
-
-%:- move(A, _, U, T), at(B, U, T-1), priority(A, PA), priority(B, PB), PA > PB, not move(B, U, _, T).
-
-
 % Display
-
-%#show bound/1.
-%#show delta/1.
-#show sp_length/2.
-
-
 
 #defined penalty/2.
 #defined move/4.
