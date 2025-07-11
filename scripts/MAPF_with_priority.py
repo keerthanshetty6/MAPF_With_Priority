@@ -198,10 +198,10 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         # select program parts based on objective
         parts: List[Tuple[str, Sequence[Symbol]]] = [("mapf", [])]
         if self._objective == Objective.MAKESPAN:
-            parts+=([("makespan", [Number(delta_or_horizon)]), ("makespan", [])]) #program makespan(horizon).
+            parts.append(("makespan", [Number(delta_or_horizon)])) #program makespan(horizon).
             self._stats["Horizon"] = delta_or_horizon 
         else:
-            parts+=([("sum_of_costs", [Number(delta_or_horizon)]), ("sum_of_costs", [])]) #program sum_of_costs(delta).
+            parts.append(("sum_of_costs", [Number(delta_or_horizon)]))  # program sum_of_costs(delta).
             self._stats["Delta"] = delta_or_horizon
 
         # select heuristic strategy

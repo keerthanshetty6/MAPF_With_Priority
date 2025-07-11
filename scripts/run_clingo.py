@@ -134,7 +134,7 @@ def run_solver(file_path,delta, cumulative_time,*args, **kwargs):
 
     if Heuristics != "No":
         command.append("--heuristic=domain")
-        command.append("--opt-strategy=bb") #usc
+        #command.append("--opt-strategy=bb") #usc
 
     command.append("--stats")
 

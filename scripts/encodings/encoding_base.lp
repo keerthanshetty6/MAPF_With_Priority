@@ -1,16 +1,19 @@
 %% setup the makespan based encoding
 #program makespan(horizon).
-
 horizon(A,horizon) :- agent(A).
 horizon(horizon).
 
 %% setup the sum of costs based encoding
-
 #program sum_of_costs(d).
-delta(D) :- D = d.
-horizon(A,N+D) :- sp_length(A,N),delta(D). %max per agent
+horizon(A,N+d) :- sp_length(A,N). %max per agent
 horizon(M) :- M = #max { N: horizon(A,N) }.
+bound(H+d) :- H = #sum{T,A : sp_length(A,T)}.
 
+penalty(A,N) :- sp_length(A,N+1), N >= 0.
+penalty(A,T) :- sp_length(A,N), at(A,U,T), not goal(A,U), T >= N.
+penalty(A,T) :- penalty(A,T+1), T >= 0.
+
+:- #sum{ 1,A,T : penalty(A,T) } > B, bound(B).
 
 #program mapf.
 time(A,1..N) :- horizon(A,N).
@@ -45,25 +48,6 @@ at(A,U,T) :- at(A,U,T-1), not move(A,U,_,T),reach(A,U,T).
 
 %check
 :- goal(A,U), horizon(A,T), not at(A,U,T).
-
-%Agents stay at goal
-penalty(A,N) :- sp_length(A,N+1), N >= 0.
-penalty(A,T) :- sp_length(A,N), at(A,U,T), not goal(A,U), T >= N.
-penalty(A,T) :- penalty(A,T+1), T >= 0.
-
-%% the sum of costs objective
-#program sum_of_costs.
-
-bound(H+D) :- H = #sum{T,A : sp_length(A,T)}, delta(D).
-
-:- #sum{ 1,A,T : penalty(A,T) } > B, bound(B).
-
-#program makespan.
-% minimize makespan
-#minimize { 1,T: penalty(_,T) }.
-
-
-% Display
 
 #defined penalty/2.
 #defined move/4.
