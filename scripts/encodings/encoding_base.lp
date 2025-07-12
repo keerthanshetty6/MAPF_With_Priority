@@ -49,6 +49,7 @@ at(A,U,T) :- at(A,U,T-1), not move(A,U,_,T),reach(A,U,T).
 %check
 :- goal(A,U), horizon(A,T), not at(A,U,T).
 
+
 #defined penalty/2.
 #defined move/4.
 #defined horizon/2.

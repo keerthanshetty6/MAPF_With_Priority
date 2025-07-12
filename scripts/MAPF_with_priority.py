@@ -79,6 +79,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         """
         Inject map and scenario facts into Clingo backend.
         """
+        
         with open(map_file, "r") as f:
             map_str = f.read().splitlines()[4:]  # skip header
         with open(scen_file, "r") as f:
@@ -87,7 +88,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         with ctl.backend() as bck:
             for row in range(len(map_str)):
                 for col in range(len(map_str[row])):
-                    if map_str[row][col] in ['.', 'E', 'S']:
+                    if map_str[row][col] in ['.', 'E', 'S', 'T']:
                         pos = Function("", [Number(col), Number(row)])
                         a = bck.add_atom(Function("vertex", [pos]))
                         bck.add_rule([a])
@@ -104,8 +105,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
                             a2 = bck.add_atom(Function("edge", [x, y]))
                             bck.add_rule([a2])
                             a3 = bck.add_atom(Function("edge", [y, x]))
-                            bck.add_rule([a3])
-                        
+                            bck.add_rule([a3])       
 
             for i, line in enumerate(scen_lines, start=1):
                 parts = line.split()
@@ -115,8 +115,8 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
                     print(f"Failed to parse scenario line: {line.strip()} → {e}")
                     continue
                 a_agent = bck.add_atom(Function("agent", [Number(i)]))
-                a_start = bck.add_atom(Function("start", [Number(i), Function("", [Number(sc), Number(sr)])]))
-                a_goal  = bck.add_atom(Function("goal", [Number(i), Function("", [Number(gc), Number(gr)])]))
+                a_start = bck.add_atom(Function("start", [Number(i), Function("", [Number(sr), Number(sc)])]))
+                a_goal  = bck.add_atom(Function("goal", [Number(i), Function("", [Number(gr), Number(gc)])]))
                 bck.add_rule([a_agent])
                 bck.add_rule([a_start])
                 bck.add_rule([a_goal])
