@@ -12,6 +12,8 @@ set -e
 module load miniconda
 source /mnt/beegfs/apps/miniconda/etc/profile.d/conda.sh
 conda activate cmapf-env
+echo "Conda binary: $(which conda)"
+echo "Python binary: $(which python)"
 
 echo "Running job {job_id} on $(hostname)"
 {command}

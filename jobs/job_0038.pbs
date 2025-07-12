@@ -10,6 +10,8 @@ set -e
 module load miniconda
 source /mnt/beegfs/apps/miniconda/etc/profile.d/conda.sh
 conda activate cmapf-env
+echo "Conda binary: $(which conda)"
+echo "Python binary: $(which python)"
 
 echo "Running job 0038 on $(hostname)"
 python scripts/run_clingo.py --map_file Instances/maps/empty-128-128.map --scen_file Instances/scenarios/empty-128-128/empty-128-128-condensed-1.scen --heuristic A --priority_file Instances/Processed/empty-128-128/empty-128-128-condensed-1/priority10-kpath.lp
