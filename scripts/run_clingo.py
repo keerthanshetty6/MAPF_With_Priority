@@ -11,18 +11,20 @@ import numpy as np
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--instance_folder", required=True, help="Path to folder containing .lp instances")
 parser.add_argument("--priority_file", required=False, help="Path to priority.lp file")
 parser.add_argument("--heuristic", required=True, choices=["No", "A", "B"], help="Heuristic strategy")
+parser.add_argument("--map_file", required=True, help="Path to the .map file")
+parser.add_argument("--scen_file", required=True, help="Path to the .scen file")
 
 args = parser.parse_args()
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENCODING_DIR = os.path.join(PROJECT_ROOT, "scripts", "encodings")
-FOLDER_PATH = os.path.join(PROJECT_ROOT, args.instance_folder)
 PRIORITY_FILE = os.path.join(PROJECT_ROOT, args.priority_file) if args.priority_file else ""
 MAPF_Solver = os.path.join(PROJECT_ROOT, "scripts", "MAPF_with_priority.py")
 Heuristics = args.heuristic
+map_file = args.map_file
+scen_file = args.scen_file
 
 encoding_base = os.path.join(ENCODING_DIR, "encoding_base.lp")
 if Heuristics == "No":
@@ -43,14 +45,15 @@ if Heuristics != "No" and not args.priority_file:
 os.makedirs("logs", exist_ok=True)
 os.makedirs("results", exist_ok=True)
 
-folder_name = os.path.basename(os.path.normpath(FOLDER_PATH))
+
+scen_name = os.path.splitext(os.path.basename(scen_file))[0]
 
 priority_suffix = ""
 if PRIORITY_FILE:
     priority_suffix = "_" + os.path.basename(PRIORITY_FILE).replace(".lp", "")
 
-EXCEL_FILE = os.path.join("results",f"{folder_name}_{Heuristics}{priority_suffix}.xlsx")
-log_filename = os.path.join("logs", f"{folder_name}_{Heuristics}{priority_suffix}.log")
+EXCEL_FILE = os.path.join("results", f"{scen_name}_{Heuristics}{priority_suffix}.xlsx")
+log_filename = os.path.join("logs", f"{scen_name}_{Heuristics}{priority_suffix}.log")
 
 # Configure logging
 logging.basicConfig(
@@ -63,7 +66,7 @@ logging.basicConfig(
 )
    
 # Initialize a DataFrame to hold the results (this will be saved to Excel later)
-columns = ['Processing File', 'Heuristics', 'Load Time', 'Ground Instance Time', 'Extract Problem Time',
+columns = ['Instance', 'Agents', 'Heuristics', 'Load Time', 'Ground Instance Time', 'Extract Problem Time',
            'Reachable Time', 'Ground Encoding Time', 'Solve Encoding Time', 'Delta', 'Total Time']
 
 # Load existing results from Excel file (if it exists)
@@ -78,21 +81,22 @@ TIMEOUT = 300  # Timeout for a single iteration in seconds
 # Decorator to log cumulative time and other details
 def log_cumulative_time(func):
     @wraps(func)
-    def wrapper(file_path, *args, **kwargs):
+    def wrapper(agent_count, *args, **kwargs):
         cumulative_time = 0  # Initialize cumulative time
         delta = 0  # Start with delta = 0    
-        logging.info(f"file : {os.path.basename(file_path)},Heuristic : {Heuristics}")
+        logging.info(f"Agents: {agent_count}, Heuristic: {Heuristics}")
         while True:
             #start = timeit.default_timer()
-            result, time_spent,stats  = func(file_path,delta, cumulative_time,*args, **kwargs)  # Call the decorated function
+            result, time_spent,stats  = func(agent_count, delta, cumulative_time,*args, **kwargs)  # Call the decorated function
             #end = timeit.default_timer()
             #iteration_time = end - start
             cumulative_time += time_spent
             
+            instance_id = os.path.splitext(os.path.basename(scen_file))[0]
             
             # Append the results for this delta iteration to the DataFrame
             results_df.loc[len(results_df)] = [
-                os.path.basename(file_path), Heuristics,
+                instance_id,agent_count, Heuristics,
                 float(stats.get('Load', 0)) if stats.get('Load') else np.nan,
                 float(stats.get('Ground Instance', 0)) if stats.get('Ground Instance') else np.nan,
                 float(stats.get('Extract Problem', 0)) if stats.get('Extract Problem') else np.nan,
@@ -115,28 +119,28 @@ def log_cumulative_time(func):
 
 # Main function to run the solver
 @log_cumulative_time
-def run_solver(file_path,delta, cumulative_time,*args, **kwargs):
+def run_solver(agent_count,delta = 0, cumulative_time = 0,*args, **kwargs):
     python_executable = sys.executable  # Detect current Python executable
+    
     command = [
         python_executable,
         MAPF_Solver,
         f"--delta={delta}",
         f"--heuristic-strategy={Heuristics}",
-        encoding_base,  
+        f"--map-file={map_file}",
+        f"--scen-file={scen_file}",
+        f"--agents={agent_count}",
+        encoding_base,
     ]
     if heuristic_lp:
         command.append(heuristic_lp)
 
     if Heuristics != "No":
         command.append(PRIORITY_FILE)
-
-    command.append(file_path)  # the instance file
-
-    if Heuristics != "No":
         command.append("--heuristic=domain")
-        #command.append("--opt-strategy=bb") #usc
 
     command.append("--stats")
+
 
     logging.info("Running command: " + " ".join(command))
 
@@ -173,31 +177,49 @@ def run_solver(file_path,delta, cumulative_time,*args, **kwargs):
 
     return "continue", iteration_time, stats
 
-def extract_number(filename):
-    """Extract the trailing number from the filename for sorting."""
-    match = re.search(r'_(\d+)(?:\.lp)?$', filename)
-    return int(match.group(1)) if match else float('inf')
+# def extract_number(filename):
+#     """Extract the trailing number from the filename for sorting."""
+#     match = re.search(r'_(\d+)(?:\.lp)?$', filename)
+#     return int(match.group(1)) if match else float('inf')
 
 
 # Get all .lp files in the folder except priority files and process them
 def process_all_files():
-    lp_files = sorted(
-    [os.path.join(FOLDER_PATH, f) for f in os.listdir(FOLDER_PATH) if f.endswith(".lp") and not f.startswith("priority")],
-    key=lambda f: extract_number(os.path.basename(f)))  # Sort by extracted number
+    logging.info(f"Processing map: {map_file}, scenario: {scen_file} with {Heuristics} Heuristics")
+    
+    
+    agent_count = 5  # starting agents
+    step = 5         # increment step
+    max_agents = 100 # or any other max if you want
+    
+    while agent_count <= max_agents:
+        logging.info(f"Running with {agent_count} agents")
 
-    if not lp_files:
-        logging.warning(f"No instance .lp files found in {FOLDER_PATH}")
-        return
-
-    logging.info(f"Processing folder: {FOLDER_PATH.split(os.sep)[-1]} with {Heuristics} Heuristics")  # Log the folder being processed
-
-    for file_path in lp_files:
-
-        timeout_occurred = run_solver(file_path)  # Process each file
-        if timeout_occurred:  # Stop further processing if timeout occurred
+        timeout_occurred = run_solver(agent_count)
+        if timeout_occurred:  # stop further processing if timeout occurred
             break
 
+        agent_count += step
+
     results_df.to_excel(EXCEL_FILE, index=False)
+    
+    # lp_files = sorted(
+    # [os.path.join(FOLDER_PATH, f) for f in os.listdir(FOLDER_PATH) if f.endswith(".lp") and not f.startswith("priority")],
+    # key=lambda f: extract_number(os.path.basename(f)))  # Sort by extracted number
+
+    # if not lp_files:
+    #     logging.warning(f"No instance .lp files found in {FOLDER_PATH}")
+    #     return
+
+    # logging.info(f"Processing folder: {FOLDER_PATH.split(os.sep)[-1]} with {Heuristics} Heuristics")  # Log the folder being processed
+
+    # for file_path in lp_files:
+
+    #     timeout_occurred = run_solver(file_path)  # Process each file
+    #     if timeout_occurred:  # Stop further processing if timeout occurred
+    #         break
+
+    # results_df.to_excel(EXCEL_FILE, index=False)
 
 # Start processing all files
 if __name__ == "__main__":

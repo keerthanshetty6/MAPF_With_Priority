@@ -30,6 +30,9 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         self._objective : Objective                 = Objective.SUM_OF_COSTS # the objective to solve for (0 for sum_of_costs)
         self._objectives : int                      = 0 # the number of objectives given on the command line(there will be an error if there is more than one)
         self._finish : Flag                         = Flag(True)
+        self._map_file: Optional[str]               = None
+        self._scen_file: Optional[str]              = None
+        self._agent_count: Optional[int]            = None
 
     def _parse_delta(self, value: str, objective: Objective) -> bool:
         """
@@ -72,16 +75,86 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         step.update(stats)
         accu.update(stats)
 
+    def _inject_instance(self, ctl: Control, map_file: str, scen_file: str, agent_count: int) -> None:
+        """
+        Inject map and scenario facts into Clingo backend.
+        """
+        with open(map_file, "r") as f:
+            map_str = f.read().splitlines()[4:]  # skip header
+        with open(scen_file, "r") as f:
+            scen_lines = f.readlines()[1:agent_count+1]
 
-    def register_options(self, options: ApplicationOptions) -> None: # to add custom options to a clingo based application, called during initialization
+        with ctl.backend() as bck:
+            for row in range(len(map_str)):
+                for col in range(len(map_str[row])):
+                    if map_str[row][col] in ['.', 'E', 'S']:
+                        pos = Function("", [Number(col), Number(row)])
+                        a = bck.add_atom(Function("vertex", [pos]))
+                        bck.add_rule([a])
+                        if row > 0 and map_str[row-1][col] in ['.', 'E', 'S', 'G']:
+                            x = Function("", [Number(col), Number(row)])
+                            y = Function("", [Number(col), Number(row-1)])
+                            a2 = bck.add_atom(Function("edge", [x, y]))
+                            bck.add_rule([a2])
+                            a3 = bck.add_atom(Function("edge", [y, x]))
+                            bck.add_rule([a3])
+                        if col > 0 and map_str[row][col-1] in ['.', 'E', 'S', 'G']:
+                            x = Function("", [Number(col), Number(row)])
+                            y = Function("", [Number(col-1), Number(row)])
+                            a2 = bck.add_atom(Function("edge", [x, y]))
+                            bck.add_rule([a2])
+                            a3 = bck.add_atom(Function("edge", [y, x]))
+                            bck.add_rule([a3])
+                        
+
+            for i, line in enumerate(scen_lines, start=1):
+                parts = line.split()
+                try:
+                    sr, sc, gr, gc = int(parts[4]), int(parts[5]), int(parts[6]), int(parts[7])
+                except ValueError as e:
+                    print(f"Failed to parse scenario line: {line.strip()} → {e}")
+                    continue
+                a_agent = bck.add_atom(Function("agent", [Number(i)]))
+                a_start = bck.add_atom(Function("start", [Number(i), Function("", [Number(sc), Number(sr)])]))
+                a_goal  = bck.add_atom(Function("goal", [Number(i), Function("", [Number(gc), Number(gr)])]))
+                bck.add_rule([a_agent])
+                bck.add_rule([a_start])
+                bck.add_rule([a_goal])
+
+    def register_options(self, options: ApplicationOptions) -> None:
         """
         Register MAPF options.
         """
+        
+        def parse_agents(value: str) -> bool:
+            """Parse and validate agent count."""
+            try:
+                agent_count = int(value)
+                if agent_count > 0:
+                    self._agent_count = agent_count
+                    return True
+                else:
+                    print(f"Error: Agent count must be positive, got {agent_count}")
+                    return False
+            except ValueError:
+                print(f"Error: Invalid agent count '{value}', must be an integer")
+                return False
+        
+        def parse_map_file(value: str) -> bool:
+            """Parse and validate map file."""
+            self._map_file = value
+            return True
+        
+        def parse_scen_file(value: str) -> bool:
+            """Parse and validate scenario file."""
+            self._scen_file = value
+            return True
+        
         options.add(
-            "PriorityMAPF", #Group/Category
-            "delta", #Option Name
-            "set the delta value", #description
-            lambda value: self._parse_delta(value, Objective.SUM_OF_COSTS), #function that processes or validates the value passed to the option
+            "PriorityMAPF",
+            "delta",
+            "set the delta value",
+            lambda value: self._parse_delta(value, Objective.SUM_OF_COSTS),
         )
         options.add(
             "PriorityMAPF",
@@ -101,7 +174,28 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
             "select heuristic strategy (No, A, B)",
             lambda value: self._parse_heuristic(value),
         )
+        options.add(
+            "PriorityMAPF",
+            "map-file",
+            "path to the map file",
+            parse_map_file,
+        )
+        options.add(
+            "PriorityMAPF",
+            "scen-file",
+            "path to the scenario file",
+            parse_scen_file,
+        )
+        options.add(
+            "PriorityMAPF",
+            "agents",
+            "number of agents",
+            parse_agents,
+        )
 
+    def print_model(self, model: Model, printer=None) -> None:
+        # Suppress default output
+        pass
 
     def validate_options(self) -> bool:
         """
@@ -114,6 +208,12 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         if self._heuristic_strategy not in ["No", "A", "B"]:
             print(f"Error: Invalid heuristic strategy: {self._heuristic_strategy}. Must be one of No, A, B.")
             return False
+
+        if (self._map_file or self._scen_file) and self._agent_count is None:
+            print("Error: If providing map/scen files, you must also specify --agents.")
+            return False
+        
+        
         
         return True
 
@@ -156,7 +256,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         )
 
 
-    def _load(self, ctl: Control, files) -> Problem: #clingo_main creates a control object
+    def _load(self, ctl: Control, files: List[str], map_file: Optional[str]=None, scen_file: Optional[str]=None, agent_count: Optional[int]=None) -> Problem: #clingo_main creates a control object
         """
         Load instance and encoding and then extract the MAPF problem.
         """
@@ -170,6 +270,9 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
 
         # ground instance in base program
         start = timeit.default_timer()
+        if map_file and scen_file and agent_count:
+            self._inject_instance(ctl, map_file, scen_file, agent_count)
+
         ctl.ground()
         self._stats["Time"]["Ground Instance"] = timeit.default_timer() - start
 
@@ -293,8 +396,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         """
         The main function of the application.
         """
-    
-        problem = self._load(ctl, files)
+        problem = self._load(ctl,files,map_file=self._map_file,scen_file=self._scen_file,agent_count=self._agent_count)
         parts = self._prepare(ctl, problem)
         self._ground(ctl, parts)
         result = self._solve(ctl)

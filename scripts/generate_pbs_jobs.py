@@ -17,7 +17,7 @@ echo "Running job {job_id} on $(hostname)"
 {command}
 """
 
-commands_txt = "mapf_job_commands.txt"
+commands_txt = "mapf_jobs.txt"
 pbs_dir = "jobs"
 max_jobs = 3  # only generate first 3 jobs -> max_jobs = None
 

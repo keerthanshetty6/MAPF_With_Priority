@@ -57,3 +57,5 @@ at(A,U,T) :- at(A,U,T-1), not move(A,U,_,T),reach(A,U,T).
 #defined penalty_summary/3.
 #defined reach/3.
 #defined delta/1.
+#defined vertex/1.
+#defined edge/2.
