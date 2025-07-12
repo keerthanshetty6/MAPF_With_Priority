@@ -93,10 +93,10 @@ def log_cumulative_time(func):
             cumulative_time += time_spent
             
             instance_id = os.path.splitext(os.path.basename(scen_file))[0]
-            
+            heu = Heuristics + priority_suffix.split("-")[0]
             # Append the results for this delta iteration to the DataFrame
             results_df.loc[len(results_df)] = [
-                instance_id,agent_count, Heuristics,
+                instance_id,agent_count, heu,
                 float(stats.get('Load', 0)) if stats.get('Load') else np.nan,
                 float(stats.get('Ground Instance', 0)) if stats.get('Ground Instance') else np.nan,
                 float(stats.get('Extract Problem', 0)) if stats.get('Extract Problem') else np.nan,

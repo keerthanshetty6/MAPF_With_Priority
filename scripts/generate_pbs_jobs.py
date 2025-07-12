@@ -19,7 +19,7 @@ echo "Running job {job_id} on $(hostname)"
 
 commands_txt = "mapf_jobs.txt"
 pbs_dir = "jobs"
-max_jobs = 3  # only generate first 3 jobs -> max_jobs = None
+max_jobs = None
 
 os.makedirs(pbs_dir, exist_ok=True)
 
@@ -35,4 +35,4 @@ for idx, command in enumerate(lines if max_jobs is None else lines[:max_jobs], 1
     with open(pbs_filename, "w") as pbs_file:
         pbs_file.write(pbs_content)
 
-print(f"Generated {min(len(lines), max_jobs)} PBS job files in '{pbs_dir}/'.")
+print(f"Generated {len(lines)} PBS job files in '{pbs_dir}/'.")

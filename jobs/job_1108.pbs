@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --output=logs/out_%j.out
+#SBATCH --error=logs/err_%j.err
+#SBATCH --time=02:00:00
+#SBATCH --cpus-per-task=5
+#SBATCH --partition=long
+
+set -e
+
+module load miniconda
+source /mnt/beegfs/apps/miniconda/etc/profile.d/conda.sh
+conda activate cmapf-env
+
+echo "Running job 1108 on $(hostname)"
+python scripts/run_clingo.py --map_file Instances/maps/room-32-32-4.map --scen_file Instances/scenarios/room-32-32-4/room-32-32-4-condensed-1.scen --heuristic No
