@@ -14,4 +14,4 @@ echo "Conda binary: $(which conda)"
 echo "Python binary: $(which python)"
 
 echo "Running job 0501 on $(hostname)"
-python scripts/run_clingo.py --map_file Instances/maps/maze-32-32-2.map --scen_file Instances/scenarios/maze-32-32-2/maze-32-32-2-even-10.scen --heuristic B --priority_file Instances/Processed/maze-32-32-2/maze-32-32-2-even-10/priority1-static.lp
+/mnt/beegfs/home/shetty/.conda/envs/cmapf-env/bin/python scripts/run_clingo.py --map_file Instances/maps/maze-32-32-2.map --scen_file Instances/scenarios/maze-32-32-2/maze-32-32-2-even-10.scen --heuristic B --priority_file Instances/Processed/maze-32-32-2/maze-32-32-2-even-10/priority1-static.lp
