@@ -4,9 +4,10 @@ root_dir = Path("Instances/Processed")
 output_txt = "mapf_jobs.txt"
 
 heuristic_modes = ["No", "A", "B"]
+objectives = ["makespan", "sum_of_costs"]
 
 priority_filenames = [
-    f"priority{i}-static.lp" if i <= 6 else f"priority{i}-kpath.lp"
+    f"priority{i}-static.lp" if i <= 5 else f"priority{i}-kpath.lp"
     for i in range(1, 14)
 ]
 
@@ -41,31 +42,34 @@ with open(output_txt, "w") as f:
             if not scen_file.exists():
                 print(f"⚠️ Missing scen file: {scen_file}")
                 continue
-
-            for heuristic in heuristic_modes:
-                if heuristic == "No":
-                    cmd = (
-                        f"python {wrapper_script} "
-                        f"--map_file {map_file.as_posix()} "
-                        f"--scen_file {scen_file.as_posix()} "
-                        f"--heuristic {heuristic}"
-                    )
-                    f.write(cmd + "\n")
-                    job_id += 1
-                else:
-                    for prio_file in priority_filenames:
-                        prio_path = scenario_folder / prio_file
-                        if prio_path.exists():
-                            cmd = (
-                                f"python {wrapper_script} "
-                                f"--map_file {map_file.as_posix()} "
-                                f"--scen_file {scen_file.as_posix()} "
-                                f"--heuristic {heuristic} "
-                                f"--priority_file {prio_path.as_posix()}"
-                            )
-                            f.write(cmd + "\n")
-                            job_id += 1
-                        else:
-                            print(f"⚠️ Missing: {prio_path}")
+            
+            for objective in objectives:
+                for heuristic in heuristic_modes:
+                    if heuristic == "No":
+                        cmd = (
+                            f"/mnt/beegfs/home/shetty/.conda/envs/cmapf-env/bin/python {wrapper_script} "
+                            f"--map_file {map_file.as_posix()} "
+                            f"--scen_file {scen_file.as_posix()} "
+                            f"--heuristic {heuristic} "
+                            f"--objective {objective}"
+                        )
+                        f.write(cmd + "\n")
+                        job_id += 1
+                    else:
+                        for prio_file in priority_filenames:
+                            prio_path = scenario_folder / prio_file
+                            if prio_path.exists():
+                                cmd = (
+                                    f"/mnt/beegfs/home/shetty/.conda/envs/cmapf-env/bin/python {wrapper_script} "
+                                    f"--map_file {map_file.as_posix()} "
+                                    f"--scen_file {scen_file.as_posix()} "
+                                    f"--heuristic {heuristic} "
+                                    f"--priority_file {prio_path.as_posix()} "
+                                    f"--objective {objective}"
+                                )
+                                f.write(cmd + "\n")
+                                job_id += 1
+                            else:
+                                print(f"⚠️ Missing: {prio_path}")
 
 print(f"✅ Job file written: {output_txt}")

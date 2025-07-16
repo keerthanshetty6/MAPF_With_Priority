@@ -33,6 +33,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         self._map_file: Optional[str]               = None
         self._scen_file: Optional[str]              = None
         self._agent_count: Optional[int]            = None
+        self._compute_min_horizon: Flag             = Flag(False)
 
     def _parse_delta(self, value: str, objective: Objective) -> bool:
         """
@@ -192,6 +193,12 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
             "number of agents",
             parse_agents,
         )
+        options.add_flag(
+            "PriorityMAPF", 
+            "compute-min-horizon", 
+            "compute and print min horizon and exit", 
+            self._compute_min_horizon
+)
 
     def print_model(self, model: Model, printer=None) -> None:
         # Suppress default output
@@ -262,10 +269,13 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         """
         # load files
         start = timeit.default_timer()
+
         for file in files:
+            print(file)
             ctl.load(file)
         if not files:
-            ctl.load("-")
+            print("No files provided, loading from map and scenario files.")
+
         self._stats["Time"]["Load"] = timeit.default_timer() - start
 
         # ground instance in base program
@@ -275,7 +285,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
 
         ctl.ground()
         self._stats["Time"]["Ground Instance"] = timeit.default_timer() - start
-
+  
         start = timeit.default_timer()
         problem = Problem(ctl)
         self._stats["Time"]["Extract Problem"] = timeit.default_timer() - start
@@ -317,6 +327,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
             if not problem.add_sp_length(ctl):
                 parts = None
             self._stats["Time"]["Shortest Path"] = timeit.default_timer() - start
+          
 
         if self._reach:
             # reachability computation via C++ has been requested
@@ -327,6 +338,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         else:
             # reachability computation via ASP has been requested
             parts.append(("reach", []))
+
         return parts
 
     def _ground(self, ctl: Control, parts: Optional[Sequence[Tuple[str, Sequence[Symbol]]]]) -> None:
@@ -334,6 +346,7 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         Ground the MAPF encoding.
         """
         start = timeit.default_timer()
+        
         if parts is not None:
             # ground the encoding
             ctl.ground(parts)
@@ -396,6 +409,19 @@ class PriorityMAPFApp(Application): #inherits from Application -> Clingo's base 
         """
         The main function of the application.
         """
+        if self._compute_min_horizon:
+            # just load and ground sp_length
+            problem = self._load(ctl, [], map_file=self._map_file, scen_file=self._scen_file, agent_count=self._agent_count)
+            problem.add_sp_length(ctl)
+            ctl.ground()
+            min_horizon = 0
+            for atom in ctl.symbolic_atoms.by_signature("sp_length", 2):
+                _, length = atom.symbol.arguments
+                print(length)
+                min_horizon = max(min_horizon, length.number)
+            print(f"Min Horizon: {min_horizon}")
+            return
+        
         problem = self._load(ctl,files,map_file=self._map_file,scen_file=self._scen_file,agent_count=self._agent_count)
         parts = self._prepare(ctl, problem)
         self._ground(ctl, parts)

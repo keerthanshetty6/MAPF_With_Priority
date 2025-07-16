@@ -15,6 +15,7 @@ parser.add_argument("--priority_file", required=False, help="Path to priority.lp
 parser.add_argument("--heuristic", required=True, choices=["No", "A", "B"], help="Heuristic strategy")
 parser.add_argument("--map_file", required=True, help="Path to the .map file")
 parser.add_argument("--scen_file", required=True, help="Path to the .scen file")
+parser.add_argument("--objective", required=True, choices=["makespan", "sum_of_costs"], help="Optimization objective")
 
 args = parser.parse_args()
 
@@ -22,9 +23,11 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENCODING_DIR = os.path.join(PROJECT_ROOT, "scripts", "encodings")
 PRIORITY_FILE = os.path.join(PROJECT_ROOT, args.priority_file) if args.priority_file else ""
 MAPF_Solver = os.path.join(PROJECT_ROOT, "scripts", "MAPF_with_priority.py")
+
 Heuristics = args.heuristic
 map_file = args.map_file
 scen_file = args.scen_file
+objective = args.objective
 
 encoding_base = os.path.join(ENCODING_DIR, "encoding_base.lp")
 if Heuristics == "No":
@@ -42,18 +45,21 @@ if Heuristics != "No" and not args.priority_file:
 # Set locale to use comma as a decimal separator
 #locale.setlocale(locale.LC_NUMERIC, "de_DE")
 
-os.makedirs("logs", exist_ok=True)
-os.makedirs("results", exist_ok=True)
-
-
 scen_name = os.path.splitext(os.path.basename(scen_file))[0]
 
 priority_suffix = ""
 if PRIORITY_FILE:
     priority_suffix = "_" + os.path.basename(PRIORITY_FILE).replace(".lp", "")
 
-EXCEL_FILE = os.path.join("results", f"{scen_name}_{Heuristics}{priority_suffix}.xlsx")
-log_filename = os.path.join("logs", f"{scen_name}_{Heuristics}{priority_suffix}.log")
+# Add subfolders based on objective
+logs_dir = os.path.join("logs", objective)
+results_dir = os.path.join("results", objective)
+
+os.makedirs(logs_dir, exist_ok=True)
+os.makedirs(results_dir, exist_ok=True)
+
+EXCEL_FILE = os.path.join(results_dir, f"{scen_name}_{Heuristics}{priority_suffix}.xlsx")
+log_filename = os.path.join(logs_dir, f"{scen_name}_{Heuristics}{priority_suffix}.log")
 
 # Configure logging
 logging.basicConfig(
@@ -67,7 +73,7 @@ logging.basicConfig(
    
 # Initialize a DataFrame to hold the results (this will be saved to Excel later)
 columns = ['Instance', 'Agents', 'Heuristics', 'Load Time', 'Ground Instance Time', 'Extract Problem Time',
-           'Reachable Time', 'Ground Encoding Time', 'Solve Encoding Time', 'Delta', 'Total Time']
+           'Reachable Time', 'Ground Encoding Time', 'Solve Encoding Time', 'Delta/Horizon', 'Total Time']
 
 # Load existing results from Excel file (if it exists)
 
@@ -83,11 +89,24 @@ def log_cumulative_time(func):
     @wraps(func)
     def wrapper(agent_count, *args, **kwargs):
         cumulative_time = 0  # Initialize cumulative time
-        delta = 0  # Start with delta = 0    
+        if objective == "makespan":
+            delta = compute_min_horizon(agent_count)
+        else:  # objective == "sum_of_costs"
+            delta = 0
+
         logging.info(f"Agents: {agent_count}, Heuristic: {Heuristics}")
         while True:
             #start = timeit.default_timer()
-            result, time_spent,stats  = func(agent_count, delta, cumulative_time,*args, **kwargs)  # Call the decorated function
+            priority_file_to_use = PRIORITY_FILE
+
+            if Heuristics in ["A", "B"] and PRIORITY_FILE:
+                base, fname = os.path.split(PRIORITY_FILE)
+                if "kpath" in fname:  # metrics 6–13
+                    # Insert agent_count folder before filename
+                    base = os.path.join(base, str(agent_count))
+                    priority_file_to_use = os.path.join(base, fname)
+
+            result, time_spent,stats  = func(agent_count, delta, cumulative_time, priority_file_to_use,*args, **kwargs)  # Call the decorated function
             #end = timeit.default_timer()
             #iteration_time = end - start
             cumulative_time += time_spent
@@ -107,25 +126,24 @@ def log_cumulative_time(func):
                 ] 
 
             if result == "timeout":
-                logging.info(f" delta : {delta}, time : {cumulative_time:.2f} (timeout)")
+                logging.info(f" delta/horizon : {delta}, time : {cumulative_time:.2f} (timeout)")
                 return True    # Stop processing further files
             elif result == "solution_found":
-                logging.info(f"delta : {delta}, time : {cumulative_time:.2f} (solution found)")
+                logging.info(f"delta/horizon : {delta}, time : {cumulative_time:.2f} (solution found)")
                 return False    # Continue processing next file
 
-            logging.info(f" delta : {delta}, time_spent : {time_spent:.2f}")
+            logging.info(f" delta/horizon : {delta}, time_spent : {time_spent:.2f}")
             delta += 1  # Increment delta for the next iteration
     return wrapper
 
 # Main function to run the solver
 @log_cumulative_time
-def run_solver(agent_count,delta = 0, cumulative_time = 0,*args, **kwargs):
+def run_solver(agent_count,delta = 0, cumulative_time = 0, priority_file="", *args, **kwargs):
     python_executable = sys.executable  # Detect current Python executable
     
     command = [
         python_executable,
         MAPF_Solver,
-        f"--delta={delta}",
         f"--heuristic-strategy={Heuristics}",
         f"--map-file={map_file}",
         f"--scen-file={scen_file}",
@@ -135,9 +153,16 @@ def run_solver(agent_count,delta = 0, cumulative_time = 0,*args, **kwargs):
     if heuristic_lp:
         command.append(heuristic_lp)
 
-    if Heuristics != "No":
-        command.append(PRIORITY_FILE)
+    if Heuristics != "No" and priority_file:
+        if not os.path.exists(priority_file):
+            logging.warning(f"Priority file not found: {priority_file}")
+        command.append(priority_file)
         command.append("--heuristic=domain")
+
+    if objective == "makespan":
+        command.append(f"--horizon={delta}")
+    else:
+        command.append(f"--delta={delta}")
 
     command.append("--stats")
 
@@ -182,15 +207,38 @@ def run_solver(agent_count,delta = 0, cumulative_time = 0,*args, **kwargs):
 #     match = re.search(r'_(\d+)(?:\.lp)?$', filename)
 #     return int(match.group(1)) if match else float('inf')
 
+# def get_max_agents_from_scen(scen_file: str) -> int:
+#     with open(scen_file, "r") as f:
+#         lines = f.readlines()
+#     return len(lines) - 1  # skip header
+
+def compute_min_horizon(agent_count: int) -> int:
+    python_executable = sys.executable
+    command = [
+        python_executable,
+        MAPF_Solver,
+        f"--map-file={map_file}",
+        f"--scen-file={scen_file}",
+        f"--agents={agent_count}",
+        "--compute-min-horizon"
+    ]
+    result = subprocess.run(command, capture_output=True, text=True)
+    stdout = result.stdout
+
+    for line in stdout.splitlines():
+        if "Min Horizon" in line:
+            return int(line.strip().split()[-1])
+
+    raise RuntimeError("Failed to determine Min Horizon from solver output")
+
 
 # Get all .lp files in the folder except priority files and process them
 def process_all_files():
     logging.info(f"Processing map: {map_file}, scenario: {scen_file} with {Heuristics} Heuristics")
-    
-    
+    max_agents = 100 #get_max_agents_from_scen(scen_file)
+
     agent_count = 5  # starting agents
     step = 5         # increment step
-    max_agents = 100 # or any other max if you want
     
     while agent_count <= max_agents:
         logging.info(f"Running with {agent_count} agents")

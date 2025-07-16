@@ -1,0 +1,15 @@
+priority(1,9).
+priority(2,1).
+priority(3,7).
+priority(4,5).
+priority(5,2).
+priority(6,14).
+priority(7,4).
+priority(8,10).
+priority(9,11).
+priority(10,13).
+priority(11,3).
+priority(12,8).
+priority(13,6).
+priority(14,12).
+priority(15,2).
