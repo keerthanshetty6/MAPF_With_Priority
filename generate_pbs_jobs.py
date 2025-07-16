@@ -21,7 +21,7 @@ echo "Running job {job_id} on $(hostname)"
 
 commands_txt = "mapf_jobs.txt"
 pbs_dir = "jobs"
-max_jobs = 3
+max_jobs = None
 
 os.makedirs(pbs_dir, exist_ok=True)
 
