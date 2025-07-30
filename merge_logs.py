@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import re
 
 
 def merge_logs_and_check(folder_path, merged_log_name="merged.log"):
@@ -11,7 +12,25 @@ def merge_logs_and_check(folder_path, merged_log_name="merged.log"):
 
     merged_log_path = os.path.join(folder_path, merged_log_name)
 
-    failure_patterns = ["out of memory", "error", "failed", "exception"]
+    failure_patterns = [
+    r"out of memory",
+    r"\boom\b",
+    r"error",
+    r"failed",
+    r"failure",
+    r"exception",
+    r"segmentation fault",
+    r"core dumped",
+    r"traceback",
+    r"aborted",
+    r"terminated",
+    r"killed",
+    r"exceeded memory limit",
+    r"node failure",
+    r"gpu error",
+    r"cannot allocate memory"]
+
+    failure_regex = [re.compile(pat, re.IGNORECASE) for pat in failure_patterns]
     failures_found = []
 
     print(f"Found {len(log_files)} log files. Merging and checking...")
@@ -24,20 +43,13 @@ def merge_logs_and_check(folder_path, merged_log_name="merged.log"):
                 merged_file.write(contents)
                 merged_file.write("\n")
 
-                for pattern in failure_patterns:
-                    if pattern.lower() in contents.lower():
-                        failures_found.append((os.path.basename(file), pattern))
+                for regex in failure_regex:
+                    if regex.search(contents):
+                        failures_found.append((os.path.basename(file), regex.pattern))
 
     print(f"✅ Merged log saved to: {merged_log_path}")
 
-    # Move files to archive
-    archive_folder = os.path.join(folder_path, "archive")
-    os.makedirs(archive_folder, exist_ok=True)
-
-    for file in log_files:
-        shutil.move(file, os.path.join(archive_folder, os.path.basename(file)))
-
-    print(f"📁 All log files moved to: {archive_folder}")
+    
 
     if failures_found:
         print("\n🚨 Failures detected:")

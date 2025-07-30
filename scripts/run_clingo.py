@@ -16,6 +16,7 @@ parser.add_argument("--heuristic", required=True, choices=["No", "A", "B"], help
 parser.add_argument("--map_file", required=True, help="Path to the .map file")
 parser.add_argument("--scen_file", required=True, help="Path to the .scen file")
 parser.add_argument("--objective", required=True, choices=["makespan", "sum_of_costs"], help="Optimization objective")
+parser.add_argument("--noreach", action="store_true", help="Use encoding without reachability")
 
 args = parser.parse_args()
 
@@ -29,7 +30,10 @@ map_file = args.map_file
 scen_file = args.scen_file
 objective = args.objective
 
-encoding_base = os.path.join(ENCODING_DIR, "encoding_base.lp")
+if args.noreach:
+    encoding_base = os.path.join(ENCODING_DIR, "encoding_no_reach.lp")
+else:
+    encoding_base = os.path.join(ENCODING_DIR, "encoding_base.lp")
 if Heuristics == "No":
     heuristic_lp = None
 elif Heuristics == "A":
@@ -73,7 +77,8 @@ logging.basicConfig(
    
 # Initialize a DataFrame to hold the results (this will be saved to Excel later)
 columns = ['Instance', 'Agents', 'Heuristics', 'Load Time', 'Ground Instance Time', 'Extract Problem Time',
-           'Reachable Time', 'Ground Encoding Time', 'Solve Encoding Time', 'Delta/Horizon', 'Total Time']
+           'Reachable Time', 'Ground Encoding Time', 'Solve Encoding Time', 'Delta/Horizon', 'Total Time',
+           'Domain Choices']
 
 # Load existing results from Excel file (if it exists)
 
@@ -115,15 +120,17 @@ def log_cumulative_time(func):
             heu = Heuristics + priority_suffix.split("-")[0]
             # Append the results for this delta iteration to the DataFrame
             results_df.loc[len(results_df)] = [
-                instance_id,agent_count, heu,
-                float(stats.get('Load', 0)) if stats.get('Load') else np.nan,
-                float(stats.get('Ground Instance', 0)) if stats.get('Ground Instance') else np.nan,
-                float(stats.get('Extract Problem', 0)) if stats.get('Extract Problem') else np.nan,
-                float(stats.get('Reachable', 0)) if stats.get('Reachable') else np.nan,
-                float(stats.get('Ground Encoding', 0)) if stats.get('Ground Encoding') else np.nan,
-                float(stats.get('Solve Encoding', 0)) if stats.get('Solve Encoding') else np.nan,
-                delta, float(cumulative_time)  # Ensure numeric values
-                ] 
+                instance_id, agent_count, heu,
+                float(stats.get('Load', np.nan)),
+                float(stats.get('Ground Instance', np.nan)),
+                float(stats.get('Extract Problem', np.nan)),
+                float(stats.get('Reachable', np.nan)),
+                float(stats.get('Ground Encoding', np.nan)),
+                float(stats.get('Solve Encoding', np.nan)),
+                delta,
+                float(cumulative_time),
+                stats.get('Domain Choices', np.nan)
+                ]
 
             if result == "timeout":
                 logging.info(f" delta/horizon : {delta}, time : {cumulative_time:.2f} (timeout)")
@@ -183,8 +190,16 @@ def run_solver(agent_count,delta = 0, cumulative_time = 0, priority_file="", *ar
     iteration_time = timeit.default_timer() - start_time  # Time taken for this iteration
     # Capture the clingo statistics
     stdout = result.stdout
-  
     stats = {}
+    # Extract number of domain choices
+    domain_match = re.search(r"Choices\s+:\s+\d+\s+\(Domain:\s+(\d+)\)", stdout)
+    if domain_match:
+        stats["Domain Choices"] = int(domain_match.group(1))
+    else:
+        stats["Domain Choices"] = np.nan  
+    
+    
+
     # Extract and log time statistics if available
 
     stats_section = re.search(r"Statistics:(.*?)(?:SATISFIABLE|UNSATISFIABLE|Finish)", stdout, re.DOTALL)# or re.search(r"Statistics:(.*?)UNSATISFIABLE", stdout, re.DOTALL)
@@ -202,15 +217,6 @@ def run_solver(agent_count,delta = 0, cumulative_time = 0, priority_file="", *ar
 
     return "continue", iteration_time, stats
 
-# def extract_number(filename):
-#     """Extract the trailing number from the filename for sorting."""
-#     match = re.search(r'_(\d+)(?:\.lp)?$', filename)
-#     return int(match.group(1)) if match else float('inf')
-
-# def get_max_agents_from_scen(scen_file: str) -> int:
-#     with open(scen_file, "r") as f:
-#         lines = f.readlines()
-#     return len(lines) - 1  # skip header
 
 def compute_min_horizon(agent_count: int) -> int:
     python_executable = sys.executable
@@ -251,23 +257,6 @@ def process_all_files():
 
     results_df.to_excel(EXCEL_FILE, index=False)
     
-    # lp_files = sorted(
-    # [os.path.join(FOLDER_PATH, f) for f in os.listdir(FOLDER_PATH) if f.endswith(".lp") and not f.startswith("priority")],
-    # key=lambda f: extract_number(os.path.basename(f)))  # Sort by extracted number
-
-    # if not lp_files:
-    #     logging.warning(f"No instance .lp files found in {FOLDER_PATH}")
-    #     return
-
-    # logging.info(f"Processing folder: {FOLDER_PATH.split(os.sep)[-1]} with {Heuristics} Heuristics")  # Log the folder being processed
-
-    # for file_path in lp_files:
-
-    #     timeout_occurred = run_solver(file_path)  # Process each file
-    #     if timeout_occurred:  # Stop further processing if timeout occurred
-    #         break
-
-    # results_df.to_excel(EXCEL_FILE, index=False)
 
 # Start processing all files
 if __name__ == "__main__":

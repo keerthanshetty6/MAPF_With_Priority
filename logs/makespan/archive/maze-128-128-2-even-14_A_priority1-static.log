@@ -1,7 +1,0 @@
-Processing map: Instances/maps/maze-128-128-2.map, scenario: Instances/scenarios/maze-128-128-2/maze-128-128-2-even-14.scen with A Heuristics
-Running with 5 agents
-Agents: 5, Heuristic: A
-Running command: C:\Users\Keerthan Shetty\OneDrive - KNIME AG\Desktop\Python\ASP\cmapf\camp\Scripts\python.exe C:\Users\Keerthan Shetty\OneDrive - KNIME AG\Desktop\Python\ASP\cmapf\Code\scripts\MAPF_with_priority.py --heuristic-strategy=A --map-file=Instances/maps/maze-128-128-2.map --scen-file=Instances/scenarios/maze-128-128-2/maze-128-128-2-even-14.scen --agents=5 C:\Users\Keerthan Shetty\OneDrive - KNIME AG\Desktop\Python\ASP\cmapf\Code\scripts\encodings\encoding_base.lp C:\Users\Keerthan Shetty\OneDrive - KNIME AG\Desktop\Python\ASP\cmapf\Code\scripts\encodings\heuristics_a.lp C:\Users\Keerthan Shetty\OneDrive - KNIME AG\Desktop\Python\ASP\cmapf\Code\Instances/Processed/maze-128-128-2/maze-128-128-2-even-14/priority1-static.lp --heuristic=domain --horizon=1081 --stats
-Timeout occurred after 300.01 seconds
- delta/horizon : 1081, time : 300.01 (timeout)
-Finished processing. Results written to results\makespan\maze-128-128-2-even-14_A_priority1-static.xlsx

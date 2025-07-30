@@ -20,12 +20,12 @@ time(A,1..N) :- horizon(A,N).
 time(1..N) :- horizon(N).
 
 % Generate valid moves
-{ move(A,U,V,T) : edge(U,V), reach(A,V,T), reach(A,U,T-1)} 1 :- time(A,T).
+{move(A,U,V,T) : edge(U,V)} 1 :- at(A,U,T-1), time(A,T).
 
 % Define
 at(A,U,0) :- start(A,U).
 at(A,V,T) :- move(A,_,V,T).
-at(A,U,T) :- at(A,U,T-1), not move(A,U,_,T),reach(A,U,T).
+at(A,U,T) :- at(A,U,T-1), not move(A,U,_,T), time(A,T).
 
 %test
 %can only move from current position
@@ -56,7 +56,6 @@ at(A,U,T) :- at(A,U,T-1), not move(A,U,_,T),reach(A,U,T).
 #defined sp_length/2.
 #defined bound/1.
 #defined penalty_summary/3.
-#defined reach/3.
 #defined delta/1.
 #defined vertex/1.
 #defined edge/2.
