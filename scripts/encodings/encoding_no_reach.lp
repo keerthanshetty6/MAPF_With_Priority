@@ -20,7 +20,7 @@ time(A,1..N) :- horizon(A,N).
 time(1..N) :- horizon(N).
 
 % Generate valid moves
-{move(A,U,V,T) : edge(U,V)} 1 :- at(A,U,T-1), time(A,T).
+{move(A,U,V,T) : edge(U,V)} 1 :- time(A,T).
 
 % Define
 at(A,U,0) :- start(A,U).

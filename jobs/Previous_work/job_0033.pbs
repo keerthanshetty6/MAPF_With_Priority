@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --output=logs/out_%j.out
+#SBATCH --error=logs/err_%j.err
+#SBATCH --time=02:00:00
+#SBATCH --cpus-per-task=5
+#SBATCH --partition=long
+#SBATCH --exclusive
+
+set -e
+
+module load miniconda
+source /mnt/beegfs/apps/miniconda/etc/profile.d/conda.sh
+conda activate cmapf-env
+
+echo "SLURM JobID: $SLURM_JOB_ID"
+echo "Conda binary: $(which conda)"
+echo "Python binary: $(which python)"
+echo "Running job 0033 on $(hostname)"
+
+/mnt/beegfs/home/shetty/.conda/envs/cmapf-env/bin/python scripts/run_clingo.py --map_file Instances/maps/empty-64-64.map --scen_file Instances/scenarios/empty-64-64/empty-64-64-even-10.scen --heuristic B --priority_file Instances/Processed/empty-64-64/empty-64-64-even-10/priority1-static.lp --objective makespan --noreach

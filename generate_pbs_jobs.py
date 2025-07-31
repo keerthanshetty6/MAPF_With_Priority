@@ -1,4 +1,5 @@
 import os
+import sys
 
 PBS_TEMPLATE = """#!/bin/bash
 #SBATCH --output=logs/out_%j.out
@@ -22,8 +23,17 @@ echo "Running job {job_id} on $(hostname)"
 {command}
 """
 
-commands_txt = "mapf_jobs.txt"
-pbs_dir = "jobs"
+# Parse command line arguments
+if len(sys.argv) > 1:
+    commands_txt = sys.argv[1]
+else:
+    commands_txt = "mapf_jobs.txt"
+
+if len(sys.argv) > 2:
+    pbs_dir = sys.argv[2]
+else:
+    pbs_dir = "jobs"
+
 max_jobs = None
 
 os.makedirs(pbs_dir, exist_ok=True)

@@ -1,17 +1,40 @@
 from pathlib import Path
+import sys
 
 root_dir = Path("Instances/Processed")
-output_txt = "mapf_jobs.txt"
 
-heuristic_modes = ["No", "A", "B"]
-objectives = ["makespan", "sum_of_costs"]
-
-priority_filenames = [
+# Parse command line arguments
+if len(sys.argv) == 1:
+    # No arguments: use all priority files and default output
+    priority_filenames = [
     f"priority{i}-static.lp" if i <= 5 else f"priority{i}-kpath.lp"
     for i in range(1, 14)
-]
+    ]
+    output_txt = "mapf_jobs.txt"
+    objectives = ["makespan", "sum_of_costs"]
+    noreach = False
+else:
+    # First argument: priority index (int)
+    a = int(sys.argv[1])
+    if a <= 5:
+        priority_filenames = [f"priority{a}-static.lp"]
+    else:
+        priority_filenames = [f"priority{a}-kpath.lp"]
+    # Second argument: output filename (optional)
+    output_txt = sys.argv[2] if len(sys.argv) > 2 else "mapf_jobs.txt"
+    if len(sys.argv) > 3:
+        objectives = [sys.argv[3]]
+    else:
+        objectives = ["makespan", "sum_of_costs"]
 
+    # Fourth argument: noreach flag (optional)
+    noreach = len(sys.argv) > 4 and sys.argv[4].lower() == "noreach"
+
+
+heuristic_modes = ["No", "A", "B"]
 wrapper_script = "scripts/run_clingo.py"
+noreach_flag = " --noreach" * noreach  
+
 
 with open(output_txt, "w") as f:
     job_id = 0
@@ -52,6 +75,7 @@ with open(output_txt, "w") as f:
                             f"--scen_file {scen_file.as_posix()} "
                             f"--heuristic {heuristic} "
                             f"--objective {objective}"
+                            f"{noreach_flag}"
                         )
                         f.write(cmd + "\n")
                         job_id += 1
@@ -66,6 +90,7 @@ with open(output_txt, "w") as f:
                                     f"--heuristic {heuristic} "
                                     f"--priority_file {prio_path.as_posix()} "
                                     f"--objective {objective}"
+                                    f"{noreach_flag}"
                                 )
                                 f.write(cmd + "\n")
                                 job_id += 1
@@ -73,3 +98,5 @@ with open(output_txt, "w") as f:
                                 print(f"⚠️ Missing: {prio_path}")
 
 print(f"✅ Job file written: {output_txt}")
+
+#python generate_jobs.py 1 SP_jobs.txt makespan
