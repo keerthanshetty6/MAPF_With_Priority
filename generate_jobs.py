@@ -70,7 +70,7 @@ with open(output_txt, "w") as f:
                 for heuristic in heuristic_modes:
                     if heuristic == "No":
                         cmd = (
-                            f"/mnt/beegfs/home/shetty/.conda/envs/cmapf-env/bin/python {wrapper_script} "
+                            f"/usr/bin/time -v /mnt/beegfs/home/shetty/.conda/envs/cmapf-env/bin/python {wrapper_script} "
                             f"--map_file {map_file.as_posix()} "
                             f"--scen_file {scen_file.as_posix()} "
                             f"--heuristic {heuristic} "
@@ -84,7 +84,7 @@ with open(output_txt, "w") as f:
                             prio_path = scenario_folder / prio_file
                             if prio_path.exists():
                                 cmd = (
-                                    f"/mnt/beegfs/home/shetty/.conda/envs/cmapf-env/bin/python {wrapper_script} "
+                                    f"/usr/bin/time -v /mnt/beegfs/home/shetty/.conda/envs/cmapf-env/bin/python {wrapper_script} "
                                     f"--map_file {map_file.as_posix()} "
                                     f"--scen_file {scen_file.as_posix()} "
                                     f"--heuristic {heuristic} "

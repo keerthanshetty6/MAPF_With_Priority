@@ -171,6 +171,7 @@ def run_solver(agent_count,delta = 0, cumulative_time = 0, priority_file="", *ar
     else:
         command.append(f"--delta={delta}")
 
+    command.append("--single-shot")
     command.append("--stats")
 
 
@@ -190,6 +191,7 @@ def run_solver(agent_count,delta = 0, cumulative_time = 0, priority_file="", *ar
     iteration_time = timeit.default_timer() - start_time  # Time taken for this iteration
     # Capture the clingo statistics
     stdout = result.stdout
+    print(stdout)  # Print the output for debugging
     stats = {}
     # Extract number of domain choices
     domain_match = re.search(r"Choices\s+:\s+\d+\s+\(Domain:\s+(\d+)\)", stdout)

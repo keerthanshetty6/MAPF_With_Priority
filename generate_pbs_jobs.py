@@ -5,7 +5,7 @@ PBS_TEMPLATE = """#!/bin/bash
 #SBATCH --output=logs/out_%j.out
 #SBATCH --error=logs/err_%j.err
 #SBATCH --time=02:00:00
-#SBATCH --cpus-per-task=5
+#SBATCH --cpus-per-task=10
 #SBATCH --partition=long
 #SBATCH --exclusive
 
