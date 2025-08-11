@@ -41,7 +41,7 @@ at(A, V, T) :- move(A, D, T), at(A, U, T-1), delta(D, U, V).
 at(A, V, T) :- at(A, V, T-1), not move(A, _, T), time(A, T). 
 
 % Collision constraints
-:- { at(A, V, T) } > 1, vertex(V), time(_, T).    
+:- { at(A, V, T) } > 1, vertex(V), time(T).    
 
 % Derived edge-based move for swap check
 moved(U, V, T) :- at(A, U, T-1), move(A, D, T), delta(D, U, V), time(A, T).
@@ -56,7 +56,7 @@ moved(U, V, T) :- at(A, U, T-1), move(A, D, T), delta(D, U, V), time(A, T).
 % Goal reachability (makes the instance unsatisfiable if any agent not at goal by its horizon)
 :- goal(A, V), not at(A, V, H), horizon(A, H).    
 
-#defined move/4.     
+#defined move/3.    
 #defined moved/3.
 #defined penalty/2.
 #defined horizon/1.
@@ -66,3 +66,6 @@ moved(U, V, T) :- at(A, U, T-1), move(A, D, T), delta(D, U, V), time(A, T).
 #defined penalty_summary/3.
 #defined vertex/1.
 #defined edge/2.
+#defined dir/1.
+#defined delta/3.
+#defined reach/3.
