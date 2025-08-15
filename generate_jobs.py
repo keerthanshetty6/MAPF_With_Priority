@@ -16,7 +16,12 @@ if len(sys.argv) == 1:
 else:
     # First argument: priority index (int)
     a = int(sys.argv[1])
-    if a <= 5:
+    if a == 0:
+        priority_filenames = [
+    f"priority{i}-static.lp" if i <= 5 else f"priority{i}-kpath.lp"
+    for i in range(1, 14)
+    ]
+    elif a <= 5:
         priority_filenames = [f"priority{a}-static.lp"]
     else:
         priority_filenames = [f"priority{a}-kpath.lp"]
@@ -28,7 +33,7 @@ else:
         objectives = ["makespan", "sum_of_costs"]
 
     # Fourth argument: noreach flag (optional)
-    noreach = len(sys.argv) > 4 and sys.argv[4].lower() == "noreach"
+    noreach = True
 
 
 heuristic_modes = ["No", "A", "B"]
